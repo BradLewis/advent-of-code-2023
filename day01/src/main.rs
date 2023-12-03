@@ -3,12 +3,7 @@ use std::fs;
 fn part1(content: &str) {
     let result: u32 = content
         .lines()
-        .map(|l| {
-            l.chars()
-                .filter(|c| c.is_numeric())
-                .map(|c| c.to_digit(10).expect("should be valid digit"))
-                .collect::<Vec<_>>()
-        })
+        .map(|l| l.chars().filter_map(|c| c.to_digit(10)).collect::<Vec<_>>())
         .map(|l| 10 * l.first().expect("number expected") + l.last().expect("number expected"))
         .sum();
     println!("part1: {}", result);
@@ -28,8 +23,7 @@ fn part2(content: &str) {
                 .replace("eight", "eight8eight")
                 .replace("nine", "nine9nine")
                 .chars()
-                .filter(|c| c.is_numeric())
-                .map(|c| c.to_digit(10).expect("should be valid digit"))
+                .filter_map(|c| c.to_digit(10))
                 .collect::<Vec<_>>()
         })
         .map(|l| 10 * l.first().expect("number expected") + l.last().expect("number expected"))
