@@ -1,4 +1,4 @@
-use std::{fs, ops::Index};
+use std::{collections::HashMap, fs, ops::Index};
 
 #[derive(Debug)]
 struct Number {
@@ -74,6 +74,37 @@ impl Map {
         }
         false
     }
+
+    fn check_and_append_to_gear(&self, number: &Number, gears: &mut HashMap<usize, Vec<usize>>) {
+        for i in 0..3 {
+            if (number.row == 0 && i == 0) || (number.row == self.height - 1 && i == 2) {
+                continue;
+            }
+            let row_index = number.row + i - 1;
+            for j in 0..number.size + 2 {
+                if (number.column == 0 && j == 0) || (number.column + j - 1 == self.width) {
+                    continue;
+                }
+                let column_index = number.column + j - 1;
+                // skip if we're just checking the numbers
+                if row_index == number.row
+                    && (column_index >= number.column
+                        && column_index <= number.column + number.size - 1)
+                {
+                    continue;
+                }
+                let value = &self[row_index][column_index];
+                if *value == '*' {
+                    let index = row_index * self.width + column_index;
+                    if gears.contains_key(&index) {
+                        gears.get_mut(&index).unwrap().push(number.value);
+                    } else {
+                        gears.insert(index, vec![number.value]);
+                    }
+                }
+            }
+        }
+    }
 }
 
 impl Index<usize> for Map {
@@ -88,6 +119,8 @@ fn main() {
     let map = Map::from_file("input.txt");
     let part1_result = part1(&map);
     println!("Part 1: {}", part1_result);
+    let part2_result = part2(&map);
+    println!("Part 2: {}", part2_result);
 }
 
 fn part1(map: &Map) -> usize {
@@ -130,6 +163,54 @@ fn part1(map: &Map) -> usize {
         }
     }
     numbers.iter().sum()
+}
+
+fn part2(map: &Map) -> usize {
+    let mut gears: HashMap<usize, Vec<usize>> = HashMap::new();
+    for (row_index, row) in map.map.iter().enumerate() {
+        let mut number: Option<Number> = None;
+        for (column_index, value) in row.iter().enumerate() {
+            if value.is_ascii_digit() {
+                let value = value
+                    .to_digit(10)
+                    .expect("should be valid digit at this point")
+                    as usize;
+                match &mut number {
+                    Some(ref mut n) => n.add(value),
+                    None => number = Some(Number::new(value, row_index, column_index)),
+                }
+            } else {
+                match number {
+                    Some(n) => {
+                        map.check_and_append_to_gear(&n, &mut gears);
+                        number = None
+                    }
+                    None => {}
+                }
+            }
+
+            // if we're at the end of the row, check if the number is adjacent to a symbol
+            if column_index == map.width - 1 {
+                match number {
+                    Some(ref n) => {
+                        map.check_and_append_to_gear(&n, &mut gears);
+                        number = None;
+                    }
+                    None => {}
+                }
+            }
+        }
+    }
+    gears
+        .values()
+        .filter_map(|v| {
+            if v.len() != 2 {
+                None
+            } else {
+                Some(v[0] * v[1])
+            }
+        })
+        .sum()
 }
 
 #[cfg(test)]
@@ -183,5 +264,11 @@ mod tests {
     fn test_part1() {
         let map = Map::from_file("test_input.txt");
         assert_eq!(part1(&map), 4361);
+    }
+
+    #[test]
+    fn test_part2() {
+        let map = Map::from_file("test_input.txt");
+        assert_eq!(part2(&map), 467835);
     }
 }
