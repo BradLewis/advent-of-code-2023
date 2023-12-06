@@ -4,6 +4,9 @@ fn main() {
     let input = fs::read_to_string("input.txt").expect("failed to read input");
     let result = part1(&input);
     println!("part 1: {}", result);
+
+    let result = part2(&input);
+    println!("part 2: {}", result);
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -31,13 +34,29 @@ impl Map {
     }
 }
 
+fn part2(input: &str) -> usize {
+    let (seed_section, sections) = input.split_once("\n\n").expect("failed to split input");
+    let seed_list: Vec<_> = seed_section
+        .split(" ")
+        .filter_map(|s| s.parse::<usize>().ok())
+        .collect();
+    let seeds = seed_list
+        .chunks_exact(2)
+        .flat_map(|c| (c[0]..(c[0] + c[1])))
+        .collect();
+    solve(seeds, sections)
+}
+
 fn part1(input: &str) -> usize {
     let (seed_section, sections) = input.split_once("\n\n").expect("failed to split input");
     let seeds: Vec<_> = seed_section
         .split(" ")
         .filter_map(|s| s.parse::<usize>().ok())
         .collect();
+    solve(seeds, sections)
+}
 
+fn solve(seeds: Vec<usize>, sections: &str) -> usize {
     let map_collection: Vec<_> = sections
         .split("\n\n")
         .map(|s| {
@@ -92,5 +111,12 @@ mod tests {
     fn test_map() {
         let map = Map::new(52, 50, 48);
         assert_eq!(map.partner(79), Some(81));
+    }
+
+    #[test]
+    fn test_part2() {
+        let input = fs::read_to_string("test_input.txt").expect("failed to read test input");
+        let result = part2(&input);
+        assert_eq!(result, 46);
     }
 }
