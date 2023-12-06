@@ -1,3 +1,4 @@
+use rayon::prelude::*;
 use std::fs;
 
 fn main() {
@@ -77,7 +78,7 @@ fn solve(seeds: Vec<usize>, sections: &str) -> usize {
         .collect();
 
     seeds
-        .iter()
+        .par_iter()
         .map(|s| {
             let mut current = *s;
             for map_group in map_collection.iter() {
