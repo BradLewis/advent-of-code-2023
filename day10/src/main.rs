@@ -8,8 +8,8 @@ fn main() {
     let result = part1(&input);
     println!("part 1: {}", result);
 
-    let (up_count, down_count) = part2(&input);
-    println!("part 2: up count {}, down count {}", up_count, down_count);
+    let result = part2(&input);
+    println!("part 2: {}", result);
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -142,7 +142,7 @@ impl Map {
             },
             b'S' => {
                 let joint = self.starting_direction();
-                joint.outgoing
+                joint.new_direction
             }
             _ => panic!("invalid position"),
         };
@@ -162,7 +162,7 @@ fn part1(input: &str) -> usize {
     let map = Map::new(input);
     let mut position = map.starting_position;
     let joint = map.starting_direction();
-    let mut direction = joint.outgoing;
+    let mut direction = joint.new_direction;
 
     let mut steps = 0;
 
@@ -179,9 +179,10 @@ fn part1(input: &str) -> usize {
     steps >> 1
 }
 
-fn part2(input: &str) -> (usize, usize) {
+fn part2(input: &str) -> usize {
     let map = Map::new(input);
     let direction_map = generate_directional_map(&map);
+    // direction_map.print();
     count_spins(&direction_map)
 }
 
@@ -189,18 +190,37 @@ fn generate_directional_map(map: &Map) -> DirectionMap {
     let mut direction_map = DirectionMap::new(map.height, map.width);
     let mut position = map.starting_position;
     let joint = map.starting_direction();
-    let mut direction = joint.outgoing;
+    let mut direction = joint.new_direction;
+
+    let mut up_spin_count = 0;
+    let mut down_spin_count = 0;
 
     direction_map[position] = Some(joint);
+    if joint.spin() == Some(Spin::Up) {
+        up_spin_count += 1;
+    } else if joint.spin() == Some(Spin::Down) {
+        down_spin_count += 1;
+    }
 
     loop {
         let (new_position, new_direction) = map.step(position, direction);
         if map[new_position] == b'S' {
             break;
         }
-        direction_map[new_position] = Some(Joint::new(new_direction, direction));
+        let joint = Joint::new(new_direction, direction);
+        direction_map[new_position] = Some(joint);
+        if joint.spin() == Some(Spin::Up) {
+            up_spin_count += 1;
+        } else if joint.spin() == Some(Spin::Down) {
+            down_spin_count += 1;
+        }
         position = new_position;
         direction = new_direction;
+    }
+    if up_spin_count > down_spin_count {
+        direction_map.spin = Some(Spin::Up);
+    } else if down_spin_count > up_spin_count {
+        direction_map.spin = Some(Spin::Down);
     }
     direction_map
 }
@@ -210,6 +230,7 @@ struct DirectionMap {
     map: Vec<Vec<Option<Joint>>>,
     height: usize,
     width: usize,
+    spin: Option<Spin>,
 }
 
 impl DirectionMap {
@@ -218,6 +239,23 @@ impl DirectionMap {
             map: vec![vec![None; width]; height],
             height,
             width,
+            spin: None,
+        }
+    }
+
+    fn print(&self) {
+        for y in 0..self.height {
+            for x in 0..self.width {
+                match self.map[y][x] {
+                    None => print!("."),
+                    Some(joint) => match joint.spin() {
+                        Some(Spin::Up) => print!("R"),
+                        Some(Spin::Down) => print!("L"),
+                        None => print!("."),
+                    },
+                }
+            }
+            println!();
         }
     }
 }
@@ -244,36 +282,50 @@ enum Spin {
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 struct Joint {
-    incoming: Direction,
-    outgoing: Direction,
+    original_direction: Direction,
+    new_direction: Direction,
 }
 
 impl Joint {
     fn new(outgoing: Direction, incoming: Direction) -> Self {
-        Self { incoming, outgoing }
+        Self {
+            original_direction: incoming,
+            new_direction: outgoing,
+        }
+    }
+
+    fn spin(&self) -> Option<Spin> {
+        match (self.original_direction, self.new_direction) {
+            (Direction::North, Direction::West) => Some(Spin::Down),
+            (Direction::North, Direction::East) => Some(Spin::Up),
+            (Direction::East, Direction::North) => Some(Spin::Down),
+            (Direction::East, Direction::South) => Some(Spin::Up),
+            (Direction::South, Direction::East) => Some(Spin::Down),
+            (Direction::South, Direction::West) => Some(Spin::Up),
+            (Direction::West, Direction::South) => Some(Spin::Down),
+            (Direction::West, Direction::North) => Some(Spin::Up),
+            _ => None,
+        }
     }
 }
 
-fn count_spins(map: &DirectionMap) -> (usize, usize) {
-    let mut up_count = 0;
-    let mut down_count = 0;
+fn count_spins(map: &DirectionMap) -> usize {
+    let mut count = 0;
     for y in 0..map.height {
         for x in 0..map.width {
             let position = Position { x, y };
             match map[position] {
                 None => {
                     let spin = check_spin(map, position);
-                    if spin == Some(Spin::Up) {
-                        up_count += 1;
-                    } else if spin == Some(Spin::Down) {
-                        down_count += 1;
+                    if Some(spin) == Some(map.spin) {
+                        count += 1;
                     }
                 }
                 _ => {}
             };
         }
     }
-    (up_count, down_count)
+    count
 }
 
 fn check_spin(map: &DirectionMap, position: Position) -> Option<Spin> {
@@ -284,20 +336,20 @@ fn check_spin(map: &DirectionMap, position: Position) -> Option<Spin> {
 
     match north {
         Joint {
-            outgoing: Direction::North,
-            incoming: Direction::West,
+            new_direction: Direction::North,
+            original_direction: Direction::West,
         } => Some(Spin::Down),
         Joint {
-            outgoing: Direction::North,
-            incoming: Direction::East,
+            new_direction: Direction::North,
+            original_direction: Direction::East,
         } => Some(Spin::Up),
         Joint {
-            outgoing: Direction::East,
-            incoming: _,
+            new_direction: Direction::East,
+            original_direction: _,
         } => Some(Spin::Up),
         Joint {
-            outgoing: Direction::West,
-            incoming: _,
+            new_direction: Direction::West,
+            original_direction: _,
         } => Some(Spin::Down),
         _ => panic!("invalid direction"),
     }
@@ -384,7 +436,7 @@ mod tests {
     #[test]
     fn test_part2() {
         let input = fs::read_to_string("test_input2.txt").expect("failed to read test input file");
-        assert_eq!(part2(&input), (4, 8));
+        assert_eq!(part2(&input), 4);
     }
 
     #[test]
@@ -410,7 +462,7 @@ mod tests {
     #[test]
     fn test_part2_2() {
         let input = fs::read_to_string("test_input3.txt").expect("failed to read test input file");
-        assert_eq!(part2(&input), (2, 8));
+        assert_eq!(part2(&input), 8);
     }
 
     #[test]
@@ -443,8 +495,8 @@ mod tests {
         assert_eq!(
             check_north(&direction_map, Position { x: 3, y: 6 }),
             Some(Joint {
-                outgoing: Direction::East,
-                incoming: Direction::East
+                new_direction: Direction::East,
+                original_direction: Direction::East
             })
         );
     }
@@ -452,6 +504,6 @@ mod tests {
     #[test]
     fn test_part2_3() {
         let input = fs::read_to_string("test_input4.txt").expect("failed to read test input file");
-        assert_eq!(part2(&input), (10, 0));
+        assert_eq!(part2(&input), 10);
     }
 }
