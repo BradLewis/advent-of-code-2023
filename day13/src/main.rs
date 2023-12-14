@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-use std::{cmp, collections::HashSet, fs};
+use std::{cmp, fs};
 
 fn main() {
     let input = fs::read_to_string("input.txt").expect("failed to load input file");
@@ -74,74 +74,37 @@ impl Pattern {
     }
 
     fn vertical_reflection(&self) -> Option<usize> {
-        let mut possible_positions: HashSet<usize> = HashSet::from_iter(0..(self.width - 1));
-        for y in 0..self.height {
-            for offset in 0..(self.width - 1) {
-                if !possible_positions.contains(&offset) {
-                    continue;
-                }
-                for x in 0..(cmp::min(self.width - offset - 1, offset) + 1) {
-                    if offset + x + 1 == self.width {
-                        continue;
-                    }
-                    if self.map[y][offset - x] != self.map[y][offset + x + 1] {
-                        possible_positions.remove(&offset);
-                        break;
-                    }
-                }
-            }
-            if possible_positions.is_empty() {
-                return None;
+        for x in 0..(self.width - 1) {
+            let width = cmp::min(x + 1, self.width - x - 1);
+            let result: usize = (0..width)
+                .map(|i| {
+                    let left = self.map.iter().map(|r| r[x - i]);
+                    let right = self.map.iter().map(|r| r[x + i + 1]);
+                    Iterator::zip(left, right).filter(|(l, r)| l != r).count()
+                })
+                .sum();
+            if result == 0 {
+                return Some(x + 1);
             }
         }
-        if possible_positions.len() == 1 {
-            return Some(
-                *possible_positions
-                    .iter()
-                    .next()
-                    .expect("should be 1 position")
-                    + 1,
-            );
-        }
-        println!(
-            "v: {:?}, {}, {}",
-            possible_positions, self.width, self.height
-        );
-        panic!("should be 1 position");
+        None
     }
 
     fn horizontal_reflection(&self) -> Option<usize> {
-        let mut possible_positions: HashSet<usize> = HashSet::from_iter(0..(self.height - 1));
-        for x in 0..self.width {
-            for offset in 0..(self.height - 1) {
-                if !possible_positions.contains(&offset) {
-                    continue;
-                }
-                for y in 0..(cmp::min(self.height - offset - 1, offset) + 1) {
-                    if offset + y + 1 == self.height {
-                        continue;
-                    }
-                    if self.map[offset - y][x] != self.map[offset + y + 1][x] {
-                        possible_positions.remove(&offset);
-                        break;
-                    }
-                }
-            }
-            if possible_positions.is_empty() {
-                return None;
+        for y in 0..(self.height - 1) {
+            let height = cmp::min(y + 1, self.height - y - 1);
+            let result: usize = (0..height)
+                .map(|i| {
+                    let up = self.map[y - i].iter();
+                    let down = &self.map[y + i + 1];
+                    Iterator::zip(up, down).filter(|(u, d)| u != d).count()
+                })
+                .sum();
+            if result == 0 {
+                return Some(y + 1);
             }
         }
-        if possible_positions.len() == 1 {
-            return Some(
-                *possible_positions
-                    .iter()
-                    .next()
-                    .expect("should be 1 position")
-                    + 1,
-            );
-        }
-        println!("h: {:?}", possible_positions);
-        panic!("should be 1 position");
+        None
     }
 }
 
