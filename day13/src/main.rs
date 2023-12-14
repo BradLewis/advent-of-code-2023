@@ -12,11 +12,7 @@ fn part1(input: &str) -> usize {
     input
         .split("\n\n")
         .map(|p| Pattern::new(p))
-        .enumerate()
-        .map(|(i, p)| {
-            println!("evaluating {}", i);
-            p.reflection_value()
-        })
+        .map(|p| p.reflection_value())
         .sum()
 }
 
