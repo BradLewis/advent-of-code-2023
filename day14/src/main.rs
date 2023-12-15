@@ -49,6 +49,14 @@ impl Platform {
         }
     }
 
+    fn score(&self) -> usize {
+        self.rocks
+            .iter()
+            .enumerate()
+            .map(|(i, l)| l.iter().filter(|&&r| r == Rock::Round).count() * (self.height - i))
+            .sum()
+    }
+
     fn tilt_north(&mut self) {
         for y in 0..self.height {
             for x in 0..self.width {
@@ -133,7 +141,7 @@ impl Platform {
         }
     }
 
-    fn cycle(&mut self, count: usize) -> usize {
+    fn cycle(&mut self, count: usize) {
         let mut cache: Vec<Vec<Vec<Rock>>> = Vec::new();
 
         for i in 0..count {
@@ -143,7 +151,8 @@ impl Platform {
                 let final_index = index + (count - index) % cycle_length;
 
                 let rocks = cache[final_index].clone();
-                return score(&rocks);
+                self.rocks = rocks;
+                return;
             }
             cache.push(self.rocks.clone());
 
@@ -152,27 +161,19 @@ impl Platform {
             self.tilt_south();
             self.tilt_east();
         }
-        0
     }
-}
-
-fn score(rocks: &Vec<Vec<Rock>>) -> usize {
-    rocks
-        .iter()
-        .enumerate()
-        .map(|(i, l)| l.iter().filter(|&&r| r == Rock::Round).count() * (rocks.len() - i))
-        .sum()
 }
 
 fn part1(input: &str) -> usize {
     let mut platform = Platform::new(input);
     platform.tilt_north();
-    score(&platform.rocks)
+    platform.score()
 }
 
 fn part2(input: &str) -> usize {
     let mut platform = Platform::new(input);
-    platform.cycle(1_000_000_000)
+    platform.cycle(1_000_000_000);
+    platform.score()
 }
 
 #[cfg(test)]
