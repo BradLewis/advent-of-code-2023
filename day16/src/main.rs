@@ -10,10 +10,6 @@ struct Position {
 }
 
 impl Position {
-    fn new(x: i64, y: i64) -> Self {
-        Self { x, y }
-    }
-
     fn move_in_direction(&self, direction: Direction) -> Self {
         match direction {
             Direction::North => Self {
@@ -196,19 +192,6 @@ impl EnergizedMap {
     fn new(width: i64, height: i64) -> Self {
         let beams = vec![vec![Vec::new(); width as usize]; height as usize];
         Self { beams }
-    }
-
-    fn print(&self) {
-        for row in &self.beams {
-            for beam in row {
-                if beam.len() == 0 {
-                    print!(".");
-                } else {
-                    print!("#");
-                }
-            }
-            println!();
-        }
     }
 }
 
