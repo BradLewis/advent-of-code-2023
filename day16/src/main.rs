@@ -1,5 +1,3 @@
-#![allow(dead_code)]
-
 use std::{
     fs,
     ops::{Index, IndexMut},
@@ -98,7 +96,11 @@ impl Map {
 
     fn traverse(&self, energized_map: &mut EnergizedMap, beam: Beam) {
         // don't track the initial beam
-        if beam.position.x != -1 {
+        if beam.position.x != -1
+            && beam.position.x != self.width
+            && beam.position.y != -1
+            && beam.position.y != self.height
+        {
             if energized_map[beam.position].contains(&beam) {
                 return;
             }
@@ -228,26 +230,61 @@ fn main() {
     let input = fs::read_to_string("input.txt").expect("failed to read input file");
     let result = part1(&input);
     println!("part 1: {}", result);
+
+    let result = part2(&input);
+    println!("part 2: {}", result);
 }
 
-fn part1(input: &str) -> usize {
-    let map = Map::new(input);
+fn find_energized_tile_count(map: &Map, start_beam: Beam) -> usize {
     let mut energized_map = EnergizedMap::new(map.width, map.height);
-    let beam = Beam {
-        position: Position { x: -1, y: 0 },
-        direction: Direction::East,
-    };
-
-    map.traverse(&mut energized_map, beam);
-
-    energized_map.print();
-
+    map.traverse(&mut energized_map, start_beam);
     energized_map
         .beams
         .iter()
         .flatten()
         .filter(|b| b.len() != 0)
         .count()
+}
+
+fn part1(input: &str) -> usize {
+    let map = Map::new(input);
+    find_energized_tile_count(
+        &map,
+        Beam {
+            position: Position { x: -1, y: 0 },
+            direction: Direction::East,
+        },
+    )
+}
+
+fn part2(input: &str) -> usize {
+    let map = Map::new(input);
+    let mut starts = Vec::new();
+    for x in 0..map.width {
+        starts.push(Beam {
+            position: Position { x, y: -1 },
+            direction: Direction::South,
+        });
+        starts.push(Beam {
+            position: Position { x, y: map.height },
+            direction: Direction::North,
+        });
+    }
+    for y in 0..map.height {
+        starts.push(Beam {
+            position: Position { x: -1, y },
+            direction: Direction::East,
+        });
+        starts.push(Beam {
+            position: Position { x: map.width, y },
+            direction: Direction::West,
+        });
+    }
+    starts
+        .iter()
+        .map(|&b| find_energized_tile_count(&map, b))
+        .max()
+        .expect("failed to find max")
 }
 
 #[cfg(test)]
@@ -258,5 +295,11 @@ mod tests {
     fn test_part1() {
         let input = fs::read_to_string("test_input.txt").expect("failed to read test input file");
         assert_eq!(part1(&input), 46);
+    }
+
+    #[test]
+    fn test_part2() {
+        let input = fs::read_to_string("test_input.txt").expect("failed to read test input file");
+        assert_eq!(part2(&input), 51);
     }
 }
