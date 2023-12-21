@@ -48,7 +48,8 @@ impl State {
         }
     }
 
-    fn process_queue(&mut self) {
+    fn process_queue(&mut self) -> bool {
+        let mut hit = false;
         while let Some((producer, pulse, target)) = self.queue.pop_front() {
             self.pulse_count.entry(pulse).and_modify(|c| *c += 1);
 
@@ -87,6 +88,9 @@ impl State {
                     name,
                 }) => {
                     memory.insert(producer, pulse);
+                    if target == "lx" && pulse == Pulse::High {
+                        hit = true;
+                    }
                     let pulse = if memory.values().all(|p| *p == Pulse::High) {
                         Pulse::Low
                     } else {
@@ -107,16 +111,11 @@ impl State {
                 None => (),
             }
         }
+        hit
     }
 }
 
-fn main() {
-    let input = fs::read_to_string("input.txt").expect("failed to read input file");
-    let result = part1(&input);
-    println!("part 1: {}", result);
-}
-
-fn part1(input: &str) -> usize {
+fn parse_input(input: &str) -> State {
     let mut targeting = HashMap::new();
     let mut modules: HashMap<_, _> = input
         .lines()
@@ -170,7 +169,20 @@ fn part1(input: &str) -> usize {
             }
         }
     }
-    let mut state = State::new(modules);
+    State::new(modules)
+}
+
+fn main() {
+    let input = fs::read_to_string("input.txt").expect("failed to read input file");
+    let result = part1(&input);
+    println!("part 1: {}", result);
+
+    let result = part2(&input);
+    println!("part 2: {}", result);
+}
+
+fn part1(input: &str) -> usize {
+    let mut state = parse_input(input);
     for _ in 0..1000 {
         state
             .queue
@@ -186,6 +198,28 @@ fn part1(input: &str) -> usize {
         .get(&Pulse::Low)
         .expect("failed to get pulse count");
     high_count * low_count
+}
+
+fn part2(input: &str) -> usize {
+    let mut state = parse_input(input);
+    let mut i = 0;
+    let mut cycle_lengths = Vec::new();
+    loop {
+        i += 1;
+        state
+            .queue
+            .push_back(("button".to_string(), Pulse::Low, "broadcaster".to_string()));
+        let hit = state.process_queue();
+        if hit {
+            cycle_lengths.push(i);
+            if cycle_lengths.len() == 4 {
+                return cycle_lengths.iter().product();
+            }
+        }
+        if i % 100000 == 0 {
+            println!("i: {}", i);
+        }
+    }
 }
 
 #[cfg(test)]
